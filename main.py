@@ -5,9 +5,12 @@ Usage:
     python main.py                          # run with default simulated data
     python main.py --csv path/to/data.csv   # run with real CSV data
     python main.py --strategy config/my_strategy.json
-    python main.py --seed 42 --mode bull --bars 200
+    python main.py --seed 42 --mode bull --bars 500
     python main.py --no-validation          # skip statistical validation
     python main.py --output results.json    # save output to file
+    python main.py --compare                # compare 4 built-in strategies
+    python main.py --compare --mode choppy  # compare on specific market mode
+    python main.py --compare --bars 1000    # compare with more bars
 """
 import argparse
 import json
@@ -21,7 +24,7 @@ from core.engine import run_backtest
 from output.serializer import to_json, save_json
 from output.summary import compute_summary
 from output.slicer import build_slices
-from core.strategy import compute_indicators
+from core.strategy import compute_indicators, ALL_CONDITION_TYPES
 from validation.monte_carlo import run_monte_carlo
 from validation.monkey_test import run_monkey_test
 from validation.overfit_detect import run_walk_forward
@@ -56,11 +59,64 @@ def parse_args():
                         help="Number of Monkey Test simulations")
     parser.add_argument("--mc-seed",  type=int, default=0,
                         help="Seed for Monte Carlo / Monkey Test (0 = no seed)")
+    parser.add_argument("--compare",  action="store_true",
+                        help="Compare 4 built-in strategies side by side")
     return parser.parse_args()
+
+
+def run_compare(args):
+    """Compare 4 built-in strategies across market modes."""
+    from run_compare import (
+        strategy_breakout, strategy_ma_crossover,
+        strategy_rsi, strategy_momentum,
+    )
+
+    STRATEGIES = [
+        ("Trend Breakout",  strategy_breakout),
+        ("MA Crossover",    strategy_ma_crossover),
+        ("RSI Rebound",     strategy_rsi),
+        ("Momentum",        strategy_momentum),
+    ]
+    modes = [args.mode] if args.mode != "bull" else ["bull", "bear", "choppy", "random"]
+
+    header = f"{'Strategy':<22} {'Mode':<8} {'#':<4} {'WR%':<7} {'Ret%':<9} {'DD%':<9} {'PF':<7} {'Sharpe':<7}"
+    sep    = "-" * len(header)
+    print("\n" + sep)
+    print(header)
+    print(sep)
+
+    def fmt(val, suffix=""):
+        return f"{val:.1f}{suffix}" if isinstance(val, float) else "—"
+
+    for strat_name, strat_fn in STRATEGIES:
+        for mode in modes:
+            ohlcv          = generate(n=args.bars, mode=mode, seed=args.seed)
+            config, custom = strat_fn()
+            result         = run_backtest(ohlcv, config, custom_conditions=custom or None)
+            result["summary"] = compute_summary(result["trades"])
+            s              = result["summary"]
+            pf             = fmt(s["profit_factor"]) if isinstance(s["profit_factor"], float) else str(s["profit_factor"])
+            print(
+                f"{strat_name:<22} {mode:<8} "
+                f"{s['total_trades']:<4} "
+                f"{fmt(s['win_rate'], '%'):<7} "
+                f"{fmt(s['total_return_pct'], '%'):<9} "
+                f"{fmt(s['max_drawdown_pct'], '%'):<9} "
+                f"{pf:<7} "
+                f"{fmt(s['sharpe_ratio']):<7}"
+            )
+        print(sep)
+
+    ALL_CONDITION_TYPES.discard("rsi_entry")
+    ALL_CONDITION_TYPES.discard("rsi_exit")
 
 
 def main():
     args = parse_args()
+
+    if args.compare:
+        run_compare(args)
+        return
 
     # ------------------------------------------------------------------
     # 1. Load data

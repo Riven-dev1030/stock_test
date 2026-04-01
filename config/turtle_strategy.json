@@ -1,0 +1,16 @@
+{
+  "name": "Turtle System 1",
+  "entry": {
+    "mode": "ALL",
+    "conditions": [
+      { "type": "breakout", "params": { "period": 20, "field": "high" } }
+    ]
+  },
+  "exit": {
+    "mode": "ANY",
+    "conditions": [
+      { "type": "atr_stop",     "params": { "multiplier": 2, "period": 14 } },
+      { "type": "lowest_low_exit" }
+    ]
+  }
+}

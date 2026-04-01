@@ -1,0 +1,20 @@
+{
+  "name": "Trend Following Breakout v1",
+  "entry": {
+    "mode": "ALL",
+    "conditions": [
+      { "type": "breakout",        "params": { "period": 20, "field": "high" } },
+      { "type": "volume_above_ma", "params": { "multiplier": 1.5, "period": 20 } },
+      { "type": "ma_alignment",    "params": { "fast": 20, "slow": 50, "direction": "bullish" } },
+      { "type": "price_above_ma",  "params": { "period": 20 } }
+    ]
+  },
+  "exit": {
+    "mode": "ANY",
+    "conditions": [
+      { "type": "atr_stop",       "params": { "multiplier": 3, "period": 14 } },
+      { "type": "ma_stop",        "params": { "fast": 20, "slow": 50 } },
+      { "type": "trailing_stop",  "params": { "activation_pct": 15, "trail_pct": 97 } }
+    ]
+  }
+}

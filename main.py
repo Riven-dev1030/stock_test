@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--mode",     type=str, default="bull",
                         choices=["random", "bull", "bear", "choppy", "diverge"],
                         help="Simulated market mode")
-    parser.add_argument("--bars",     type=int, default=200,
+    parser.add_argument("--bars",     type=int, default=500,
                         help="Number of bars to simulate")
     parser.add_argument("--output",   type=str, default=None,
                         help="Save full backtest result to this JSON file")

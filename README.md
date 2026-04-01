@@ -54,7 +54,8 @@ pip install -r requirements.txt
 
 ```bash
 python main.py
-python main.py --mode bull --bars 500 --seed 42
+# 預設：bull 模式，500 根 K 棒，seed=42
+# 預期輸出：約 7 筆交易，勝率 ~85%，總報酬 ~118%
 ```
 
 ### 執行回測（真實 CSV 數據）

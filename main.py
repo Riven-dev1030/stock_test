@@ -59,8 +59,14 @@ def parse_args():
                         help="Number of Monkey Test simulations")
     parser.add_argument("--mc-seed",  type=int, default=0,
                         help="Seed for Monte Carlo / Monkey Test (0 = no seed)")
-    parser.add_argument("--compare",  action="store_true",
+    parser.add_argument("--compare",   action="store_true",
                         help="Compare 4 built-in strategies side by side")
+    parser.add_argument("--chart",     action="store_true",
+                        help="Also generate a chart PNG after backtest (requires --output)")
+    parser.add_argument("--to-image", type=str, default=None, metavar="RESULTS_JSON",
+                        help="Convert a results JSON file to a chart PNG image")
+    parser.add_argument("--image-out", type=str, default=None, metavar="OUTPUT_PNG",
+                        help="Output path for chart image (default: same name as JSON, .png)")
     return parser.parse_args()
 
 
@@ -116,6 +122,12 @@ def main():
 
     if args.compare:
         run_compare(args)
+        return
+
+    if args.to_image:
+        from output.chart import chart_from_json
+        out = chart_from_json(args.to_image, args.image_out)
+        print(f"Chart saved to: {out}")
         return
 
     # ------------------------------------------------------------------
@@ -218,6 +230,11 @@ def main():
     if args.output:
         save_json(result, args.output)
         print(f"\nFull results saved to: {args.output}")
+        if args.chart:
+            from output.chart import generate_chart
+            img_path = os.path.splitext(args.output)[0] + ".png"
+            generate_chart(result, img_path)
+            print(f"Chart saved to:        {img_path}")
     else:
         print("\n--- JSON Output (truncated scan_log) ---")
         # Print without the full scan_log to keep output manageable

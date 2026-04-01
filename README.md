@@ -35,10 +35,19 @@ backtest-system/
 
 ## 快速開始
 
-### 安裝相依
+### 建立虛擬環境（推薦）
 
 ```bash
-pip install pytest
+bash setup.sh
+source venv/bin/activate
+```
+
+或手動建立：
+
+```bash
+python3 -m venv venv
+source venv/bin/activate   # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ### 執行回測（模擬數據）

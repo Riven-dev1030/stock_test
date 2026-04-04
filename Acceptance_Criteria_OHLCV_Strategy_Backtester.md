@@ -1,9 +1,9 @@
 # OHLCV 策略回測驗證系統 — 驗收標準
 
-**版本：** v1.1  
-**日期：** 2026-04-04  
-**對應 SDD 版本：** v1.1  
-**狀態：** Updated
+**版本：** v1.0  
+**日期：** 2026-04-01  
+**對應 SDD 版本：** v1.0  
+**狀態：** Draft
 
 ---
 
@@ -119,8 +119,8 @@
 | 項目 | 等級 | 測試方法 | 通過條件 |
 |------|------|----------|----------|
 | ENG-09 | P0 | 檢查 scan_log 長度 | 等於 total_bars - warmup_period |
-| ENG-10 | P0 | 檢查持倉中的 scan_log | 包含 `positions` 陣列（非空），且 `positions[0].current_pnl_pct` 計算正確 |
-| ENG-11 | P1 | 檢查出場條件的 distance_pct | **已知變更：** `exit_conditions` 已從 scan_log 移除（v1.1）。透過 trades 中的 `pnl_pct` 欄位驗證損益計算正確性 |
+| ENG-10 | P0 | 檢查持倉中的 scan_log | 包含 position 物件，且 current_pnl_pct 計算正確 |
+| ENG-11 | P0 | 檢查出場條件的 distance_pct | ATR 止損的 distance_pct = (current_price - stop_price) / current_price * 100，數值正確 |
 
 ### 5.4 邊界情況
 
@@ -191,27 +191,7 @@
 
 ## 8. 整合測試
 
-### 8.1 端到端流程（v1.1 新增）
-
-| 項目 | 等級 | 測試方法 | 通過條件 |
-|------|------|----------|----------|
-| ENG-15 | P1 | 設定 `max_positions: 3`，跑 500 根 bull 數據 | `scan_log` 中存在 `positions` 長度 > 1 的紀錄，trades 中有多個同時開倉的交易 |
-
-### 8.2 圖表生成
-
-| 項目 | 等級 | 測試方法 | 通過條件 |
-|------|------|----------|----------|
-| CHT-01 | P1 | 執行 `python main.py --output r.json --chart` | 生成 `r.png`，檔案大小 > 50KB |
-| CHT-02 | P1 | 執行 `python main.py --to-image r.json` | 生成同名 `.png`，不報錯 |
-
-### 8.3 策略比較
-
-| 項目 | 等級 | 測試方法 | 通過條件 |
-|------|------|----------|----------|
-| CMP-01 | P1 | 執行 `python main.py --compare` | 輸出包含 4 種策略 × 4 種市場模式的比較表，共 16 行資料 |
-| CMP-02 | P1 | 執行 `python main.py --compare --mode choppy` | 只輸出 choppy 模式的 4 種策略比較（4 行）|
-
-### 8.4 端到端流程
+### 8.1 端到端流程
 
 | 項目 | 等級 | 測試方法 | 通過條件 |
 |------|------|----------|----------|

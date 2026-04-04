@@ -1,8 +1,8 @@
 # OHLCV 策略回測驗證系統 — Software Design Document (SDD)
 
-**版本：** v1.1  
-**日期：** 2026-04-04  
-**狀態：** Updated
+**版本：** v1.0  
+**日期：** 2026-04-01  
+**狀態：** Draft
 
 ---
 
@@ -43,35 +43,28 @@
 ### 2.2 模組結構
 
 ```
-stock_test/
+backtest-system/
 ├── core/
 │   ├── data_gen.py          # 模擬數據生成
 │   ├── data_loader.py       # 真實數據載入介面
-│   ├── indicators.py        # 技術指標計算（SMA, ATR, Highest/Lowest 等）
+│   ├── indicators.py        # 技術指標計算（SMA, ATR 等）
 │   ├── pattern.py           # K 棒型態辨識
 │   ├── strategy.py          # 策略定義與介面
-│   └── engine.py            # 回測引擎（支援多倉位）
+│   └── engine.py            # 回測引擎主體
 ├── output/
 │   ├── serializer.py        # JSON 結構化輸出
 │   ├── summary.py           # 統計摘要生成
-│   ├── slicer.py            # OHLCV 切片擷取（供 AI 診斷）
-│   └── chart.py             # PNG 圖表生成（matplotlib）
+│   └── slicer.py            # OHLCV 切片擷取（供 AI 診斷）
 ├── validation/
 │   ├── monte_carlo.py       # Monte Carlo Simulation
 │   ├── monkey_test.py       # Monkey Test（隨機策略對照）
 │   └── overfit_detect.py    # Overfitting Detection（Walk-Forward）
 ├── config/
-│   ├── strategy_config.json # 預設策略（趨勢突破 v1）
-│   └── turtle_strategy.json # 海龜策略設定（System 1）
+│   └── strategy_config.json # 策略參數設定檔
 ├── tests/
 │   ├── unit/                # 單元測試
 │   └── integration/         # 整合測試
-├── main.py                  # 入口點（含所有 CLI 旗標）
-├── run_compare.py           # 四策略比較示範腳本
-├── run_turtle.py            # 海龜策略示範腳本
-├── run_grid.py              # 網格策略示範腳本
-├── requirements.txt         # 相依套件
-└── setup.sh                 # 一鍵建立虛擬環境
+└── main.py                  # 入口點
 ```
 
 ### 2.3 數據流
@@ -151,7 +144,6 @@ stock_test/
 ```json
 {
   "name": "Trend Following Breakout v1",
-  "max_positions": 1,
   "entry": {
     "mode": "ALL",
     "conditions": [
@@ -267,34 +259,30 @@ for each bar (index = warmup_period to end):
     "price_above_ma": { "result": true, "detail": "close 107.8 > sma_20 103.5" }
   },
   "entry_triggered": false,
-  "positions": [],
-  "exit_triggered": false,
-  "exit_reason": null,
-  "exits_this_bar": []
+  "position": null,
+  "exit_conditions": null
 }
 ```
 
-持倉中的掃描紀錄會額外包含（支援多倉位）：
+持倉中的掃描紀錄會額外包含：
 
 ```json
 {
-  "positions": [
-    {
-      "trade_id": 1,
-      "entry_price": 107.8,
-      "entry_index": 55,
-      "current_pnl_pct": 2.3,
-      "peak_price": 112.5,
-      "bars_held": 8
-    }
-  ],
+  "position": {
+    "entry_price": 107.8,
+    "entry_index": 55,
+    "current_pnl_pct": 2.3,
+    "peak_price": 112.5,
+    "bars_held": 8
+  },
+  "exit_conditions": {
+    "atr_stop": { "triggered": false, "stop_price": 99.4, "distance_pct": 7.8 },
+    "ma_stop": { "triggered": false, "detail": "sma_20 105.1 > sma_50 102.3, no cross" },
+    "trailing_stop": { "triggered": false, "active": true, "trail_price": 109.1, "distance_pct": 1.2 }
+  },
   "exit_triggered": false,
-  "exit_reason": null,
-  "exits_this_bar": []
+  "exit_reason": null
 }
-```
-
-> **v1.1 變更：** `position`（單一物件）改為 `positions`（陣列），支援 `max_positions > 1` 的多倉位策略。`exit_conditions` 欄位已從 scan_log 移除。
 ```
 
 ### 3.5 K 棒型態辨識（pattern.py）
@@ -326,21 +314,7 @@ for each bar (index = warmup_period to end):
 
 ## 4. 輸出層設計
 
-### 4.1 圖表生成（chart.py）
-
-`output/chart.py` 將回測結果渲染為 PNG 圖表（需要 matplotlib）。
-
-- **輸入：** 回測結果 dict 或 JSON 檔案路徑
-- **輸出：** 深色主題 PNG（1400×1000px，150 DPI）
-- **內容：** 4 個區塊 — 累積損益曲線、每筆交易損益、出場原因分布、統計摘要表
-
-CLI 用法：
-```bash
-python main.py --output results.json --chart      # 回測同時生成圖表
-python main.py --to-image results.json            # 轉換已存在的 JSON
-```
-
-### 4.2 JSON 輸出結構（serializer.py）
+### 4.1 JSON 輸出結構（serializer.py）
 
 回測完成後輸出的完整 JSON 結構：
 
@@ -559,9 +533,9 @@ python main.py --to-image results.json            # 轉換已存在的 JSON
 
 核心運算層僅使用 Python 標準庫（`json`, `math`, `random`, `statistics`, `csv`），不依賴任何第三方套件。這確保在任何環境都能直接執行。
 
-相依套件（`requirements.txt`）：
-- `pytest>=7.0`：測試框架
-- `matplotlib>=3.7`：PNG 圖表生成（`output/chart.py` 使用）
+可選相依：
+- `requests`：用於從 API 載入真實數據（data_loader.py）
+- `pytest`：測試框架
 
 ---
 
@@ -569,16 +543,8 @@ python main.py --to-image results.json            # 轉換已存在的 JSON
 
 以下為已規劃但不在 v1.0 範圍內的功能，系統架構已預留擴充點：
 
-### v1.1 已實作
-
-- **多倉位支援：** `max_positions` 設定值，engine.py 使用 `positions[]` 管理多個同時開倉（用於網格、加碼策略）
-- **圖表生成：** `output/chart.py` 輸出深色主題 PNG 報表
-- **策略比較：** `--compare` 旗標，一次比較 4 種內建策略
-- **示範腳本：** `run_turtle.py`（海龜）、`run_grid.py`（網格）、`run_compare.py`（策略比較）
-
-### 後續規劃
-
 - **多標的同時回測：** engine.py 支援接收多組 OHLCV 並行運算
 - **組合層級風控：** 跨策略、跨標的的整體部位控制
 - **真實數據源對接：** Yahoo Finance API, TWSE API 等
-- **互動式 K 線圖：** 可拖拉縮放的網頁視覺化介面
+- **網頁視覺化消費端：** 將 JSON 結果渲染為互動式 K 線圖與績效報表
+- **策略市集：** 預設常見策略模板（均線交叉、RSI 超買超賣、布林通道等）
